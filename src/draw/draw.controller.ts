@@ -31,4 +31,3 @@ export class DrawController {
     return this.drawService.getDrawHistory(parsedLimit);
   }
 }
-

@@ -44,16 +44,11 @@ export class Web3Controller {
    *   GET /api/admin/backfill-ticket-by-tx?txHash=0x...
    */
   @Get('backfill-ticket-by-tx')
-  async backfillTicketByTx(
-    @Query('txHash') txHash?: string,
-  ) {
+  async backfillTicketByTx(@Query('txHash') txHash?: string) {
     if (!txHash) {
-      throw new BadRequestException(
-        'Query parameter "txHash" is required.',
-      );
+      throw new BadRequestException('Query parameter "txHash" is required.');
     }
 
     return this.web3Service.backfillTicketFromTxHash(txHash);
   }
 }
-

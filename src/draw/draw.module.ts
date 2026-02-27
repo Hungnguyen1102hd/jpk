@@ -8,4 +8,3 @@ import { DrawScheduler } from './draw.scheduler';
   controllers: [DrawController],
 })
 export class DrawModule {}
-

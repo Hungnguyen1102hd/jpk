@@ -43,13 +43,15 @@ let TicketService = class TicketService {
             numbers: t.numbers,
             isWinner: t.isWinner,
             purchasedAt: t.createdAt,
-            draw: t.draw ? {
-                drawId: t.draw.onChainDrawId,
-                status: t.draw.status,
-                winningNumbers: t.draw.winningNumbers,
-                totalPrize: t.draw.totalPrize,
-                executedAt: t.draw.executedAt,
-            } : null,
+            draw: t.draw
+                ? {
+                    drawId: t.draw.onChainDrawId,
+                    status: t.draw.status,
+                    winningNumbers: t.draw.winningNumbers,
+                    totalPrize: t.draw.totalPrize,
+                    executedAt: t.draw.executedAt,
+                }
+                : null,
         }));
     }
 };

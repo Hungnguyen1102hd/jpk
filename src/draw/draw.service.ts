@@ -56,8 +56,9 @@ export class DrawService {
       const tokenAddress =
         this.configService.get<string>('TOKEN_CONTRACT_ADDRESS') ??
         this.configService.get<string>('JACKPOT_TOKEN_ADDRESS');
-      const lotteryAddress =
-        this.configService.get<string>('LOTTERY_CONTRACT_ADDRESS');
+      const lotteryAddress = this.configService.get<string>(
+        'LOTTERY_CONTRACT_ADDRESS',
+      );
 
       if (!tokenAddress || !lotteryAddress) {
         this.logger.error(
@@ -96,14 +97,11 @@ export class DrawService {
     try {
       const offsetHours = 7;
       const nowUtc = new Date();
-      const nowVn = new Date(
-        nowUtc.getTime() + offsetHours * 60 * 60 * 1000,
-      );
+      const nowVn = new Date(nowUtc.getTime() + offsetHours * 60 * 60 * 1000);
 
       const nextDrawVn = this.computeNextDrawInVietnamTime(nowVn);
 
-      const nextDrawUtcMs =
-        nextDrawVn.getTime() - offsetHours * 60 * 60 * 1000;
+      const nextDrawUtcMs = nextDrawVn.getTime() - offsetHours * 60 * 60 * 1000;
       const nextDrawUtc = new Date(nextDrawUtcMs);
 
       return {
@@ -114,13 +112,13 @@ export class DrawService {
       this.logger.error(
         `Failed to compute next draw time: ${(error as Error).message}`,
       );
-      throw new InternalServerErrorException('Failed to compute next draw time');
+      throw new InternalServerErrorException(
+        'Failed to compute next draw time',
+      );
     }
   }
 
-  async getRecentWinners(
-    limit = 20,
-  ): Promise<RecentWinnerResponse[]> {
+  async getRecentWinners(limit = 20): Promise<RecentWinnerResponse[]> {
     try {
       const tickets = await this.prisma.ticket.findMany({
         where: {
@@ -239,4 +237,3 @@ export class DrawService {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 }
-

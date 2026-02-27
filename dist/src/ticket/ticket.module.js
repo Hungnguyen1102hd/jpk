@@ -16,7 +16,7 @@ exports.TicketModule = TicketModule;
 exports.TicketModule = TicketModule = __decorate([
     (0, common_1.Module)({
         providers: [ticket_service_1.TicketService],
-        controllers: [ticket_controller_1.TicketController]
+        controllers: [ticket_controller_1.TicketController],
     })
 ], TicketModule);
 //# sourceMappingURL=ticket.module.js.map

@@ -165,9 +165,7 @@ export class Web3Service implements OnModuleInit {
         processed += 1;
       } catch (err) {
         this.logger.error(
-          `Failed to backfill ticketId=${ticketId}: ${
-            (err as Error).message
-          }`,
+          `Failed to backfill ticketId=${ticketId}: ${(err as Error).message}`,
         );
       }
     }

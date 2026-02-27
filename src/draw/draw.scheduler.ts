@@ -14,7 +14,9 @@ export class DrawScheduler implements OnModuleInit {
       this.configService.get<string>('ENABLE_AUTO_DRAW') === 'true';
 
     if (!enabled) {
-      this.logger.log('Auto draw scheduler is disabled (ENABLE_AUTO_DRAW != true).');
+      this.logger.log(
+        'Auto draw scheduler is disabled (ENABLE_AUTO_DRAW != true).',
+      );
       return;
     }
 
@@ -28,9 +30,7 @@ export class DrawScheduler implements OnModuleInit {
     try {
       const nowUtc = new Date();
       const vnOffsetHours = 7;
-      const nowVn = new Date(
-        nowUtc.getTime() + vnOffsetHours * 60 * 60 * 1000,
-      );
+      const nowVn = new Date(nowUtc.getTime() + vnOffsetHours * 60 * 60 * 1000);
 
       if (!this.isDrawWindow(nowVn)) {
         // Reset flag when outside the draw window so the next window can execute again.
@@ -84,10 +84,12 @@ export class DrawScheduler implements OnModuleInit {
     const rpcUrl =
       this.configService.get<string>('BSC_RPC_URL') ??
       'https://data-seed-prebsc-1-s1.binance.org:8545';
-    const lotteryAddress =
-      this.configService.get<string>('LOTTERY_CONTRACT_ADDRESS');
-    const privateKey =
-      this.configService.get<string>('DRAW_EXECUTOR_PRIVATE_KEY');
+    const lotteryAddress = this.configService.get<string>(
+      'LOTTERY_CONTRACT_ADDRESS',
+    );
+    const privateKey = this.configService.get<string>(
+      'DRAW_EXECUTOR_PRIVATE_KEY',
+    );
 
     if (!lotteryAddress) {
       this.logger.error(
@@ -111,9 +113,7 @@ export class DrawScheduler implements OnModuleInit {
 
     try {
       const tx = await contract.executeDraw();
-      this.logger.log(
-        `Submitted executeDraw transaction. Hash: ${tx.hash}`,
-      );
+      this.logger.log(`Submitted executeDraw transaction. Hash: ${tx.hash}`);
       const receipt = await tx.wait();
       this.logger.log(
         `executeDraw transaction confirmed in block ${receipt.blockNumber}.`,
@@ -125,4 +125,3 @@ export class DrawScheduler implements OnModuleInit {
     }
   }
 }
-
