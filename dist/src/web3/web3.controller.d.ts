@@ -5,6 +5,9 @@ export declare class Web3Controller {
     backfillTickets(fromBlockParam?: string, toBlockParam?: string): Promise<{
         processed: number;
     }>;
+    backfillDraws(fromBlockParam?: string, toBlockParam?: string): Promise<{
+        processed: number;
+    }>;
     backfillTicketByTx(txHash?: string): Promise<{
         processed: number;
     }>;

@@ -3,7 +3,7 @@ import { Web3Service } from './web3.service';
 
 @Controller('api/admin')
 export class Web3Controller {
-  constructor(private readonly web3Service: Web3Service) {}
+  constructor(private readonly web3Service: Web3Service) { }
 
   /**
    * Backfill TicketPurchased events from a given block range into the database.
@@ -35,6 +35,38 @@ export class Web3Controller {
     }
 
     return this.web3Service.backfillTicketsFromEvents(fromBlock, toBlock);
+  }
+
+  /**
+   * Backfill DrawExecuted events from a given block range into the database.
+   *
+   * Example:
+   *   GET /api/admin/backfill-draws?fromBlock=9256400&toBlock=9256500
+   */
+  @Get('backfill-draws')
+  async backfillDraws(
+    @Query('fromBlock') fromBlockParam?: string,
+    @Query('toBlock') toBlockParam?: string,
+  ) {
+    const fromBlock = Number(fromBlockParam);
+    if (!Number.isInteger(fromBlock) || fromBlock < 0) {
+      throw new BadRequestException(
+        'Query parameter "fromBlock" is required and must be a non-negative integer.',
+      );
+    }
+
+    const toBlock =
+      typeof toBlockParam === 'string' && toBlockParam.length > 0
+        ? Number(toBlockParam)
+        : undefined;
+
+    if (toBlock !== undefined && (!Number.isInteger(toBlock) || toBlock < 0)) {
+      throw new BadRequestException(
+        'Query parameter "toBlock", if provided, must be a non-negative integer.',
+      );
+    }
+
+    return this.web3Service.backfillDrawsFromEvents(fromBlock, toBlock);
   }
 
   /**

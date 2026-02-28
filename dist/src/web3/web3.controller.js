@@ -33,6 +33,19 @@ let Web3Controller = class Web3Controller {
         }
         return this.web3Service.backfillTicketsFromEvents(fromBlock, toBlock);
     }
+    async backfillDraws(fromBlockParam, toBlockParam) {
+        const fromBlock = Number(fromBlockParam);
+        if (!Number.isInteger(fromBlock) || fromBlock < 0) {
+            throw new common_1.BadRequestException('Query parameter "fromBlock" is required and must be a non-negative integer.');
+        }
+        const toBlock = typeof toBlockParam === 'string' && toBlockParam.length > 0
+            ? Number(toBlockParam)
+            : undefined;
+        if (toBlock !== undefined && (!Number.isInteger(toBlock) || toBlock < 0)) {
+            throw new common_1.BadRequestException('Query parameter "toBlock", if provided, must be a non-negative integer.');
+        }
+        return this.web3Service.backfillDrawsFromEvents(fromBlock, toBlock);
+    }
     async backfillTicketByTx(txHash) {
         if (!txHash) {
             throw new common_1.BadRequestException('Query parameter "txHash" is required.');
@@ -49,6 +62,14 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], Web3Controller.prototype, "backfillTickets", null);
+__decorate([
+    (0, common_1.Get)('backfill-draws'),
+    __param(0, (0, common_1.Query)('fromBlock')),
+    __param(1, (0, common_1.Query)('toBlock')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], Web3Controller.prototype, "backfillDraws", null);
 __decorate([
     (0, common_1.Get)('backfill-ticket-by-tx'),
     __param(0, (0, common_1.Query)('txHash')),

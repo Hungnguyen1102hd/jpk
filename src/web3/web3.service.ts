@@ -12,7 +12,7 @@ export class Web3Service implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   onModuleInit() {
     this.initProvider();
@@ -140,8 +140,7 @@ export class Web3Service implements OnModuleInit {
       typeof toBlock === 'number' && toBlock >= fromBlock ? toBlock : undefined;
 
     this.logger.log(
-      `Starting backfill from block ${fromBlock}${
-        endBlock !== undefined ? ` to block ${endBlock}` : ''
+      `Starting backfill from block ${fromBlock}${endBlock !== undefined ? ` to block ${endBlock}` : ''
       }`,
     );
 
@@ -171,6 +170,71 @@ export class Web3Service implements OnModuleInit {
     }
 
     this.logger.log(`Backfill complete. Processed ${processed} events.`);
+    return { processed };
+  }
+
+  /**
+   * Backfill draws by scanning historical DrawExecuted events using eth_getLogs.
+   */
+  async backfillDrawsFromEvents(
+    fromBlock: number,
+    toBlock?: number,
+  ): Promise<{ processed: number }> {
+    if (!Number.isInteger(fromBlock) || fromBlock < 0) {
+      throw new Error('fromBlock must be a non-negative integer');
+    }
+
+    const endBlock =
+      typeof toBlock === 'number' && toBlock >= fromBlock ? toBlock : undefined;
+
+    this.logger.log(
+      `Starting draw backfill from block ${fromBlock}${endBlock !== undefined ? ` to block ${endBlock}` : ''
+      }`,
+    );
+
+    const filter = this.contract.filters.DrawExecuted();
+    const logs = await this.contract.queryFilter(filter, fromBlock, endBlock);
+
+    this.logger.log(`Found ${logs.length} DrawExecuted events to process.`);
+
+    let processed = 0;
+    for (const log of logs) {
+      const eventLog = log as unknown as {
+        args: { drawId: bigint; winningNumbers: readonly number[]; totalPrize: bigint };
+      };
+      const { drawId, winningNumbers, totalPrize } = eventLog.args;
+
+      try {
+        this.logger.log(
+          `Backfilling DrawExecuted event: drawId=${drawId}, prize=${totalPrize}`,
+        );
+
+        // Create or update Draw record
+        await this.prisma.draw.upsert({
+          where: { onChainDrawId: Number(drawId) },
+          update: {
+            winningNumbers: Array.from(winningNumbers).map(Number),
+            totalPrize: totalPrize.toString(),
+            status: 'COMPLETED',
+          },
+          create: {
+            onChainDrawId: Number(drawId),
+            winningNumbers: Array.from(winningNumbers).map(Number),
+            totalPrize: totalPrize.toString(),
+            status: 'COMPLETED',
+            executedAt: new Date(),
+          },
+        });
+
+        processed += 1;
+      } catch (err) {
+        this.logger.error(
+          `Failed to backfill drawId=${drawId}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    this.logger.log(`Draw backfill complete. Processed ${processed} events.`);
     return { processed };
   }
 

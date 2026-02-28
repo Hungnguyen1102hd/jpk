@@ -123,6 +123,45 @@ let Web3Service = Web3Service_1 = class Web3Service {
         this.logger.log(`Backfill complete. Processed ${processed} events.`);
         return { processed };
     }
+    async backfillDrawsFromEvents(fromBlock, toBlock) {
+        if (!Number.isInteger(fromBlock) || fromBlock < 0) {
+            throw new Error('fromBlock must be a non-negative integer');
+        }
+        const endBlock = typeof toBlock === 'number' && toBlock >= fromBlock ? toBlock : undefined;
+        this.logger.log(`Starting draw backfill from block ${fromBlock}${endBlock !== undefined ? ` to block ${endBlock}` : ''}`);
+        const filter = this.contract.filters.DrawExecuted();
+        const logs = await this.contract.queryFilter(filter, fromBlock, endBlock);
+        this.logger.log(`Found ${logs.length} DrawExecuted events to process.`);
+        let processed = 0;
+        for (const log of logs) {
+            const eventLog = log;
+            const { drawId, winningNumbers, totalPrize } = eventLog.args;
+            try {
+                this.logger.log(`Backfilling DrawExecuted event: drawId=${drawId}, prize=${totalPrize}`);
+                await this.prisma.draw.upsert({
+                    where: { onChainDrawId: Number(drawId) },
+                    update: {
+                        winningNumbers: Array.from(winningNumbers).map(Number),
+                        totalPrize: totalPrize.toString(),
+                        status: 'COMPLETED',
+                    },
+                    create: {
+                        onChainDrawId: Number(drawId),
+                        winningNumbers: Array.from(winningNumbers).map(Number),
+                        totalPrize: totalPrize.toString(),
+                        status: 'COMPLETED',
+                        executedAt: new Date(),
+                    },
+                });
+                processed += 1;
+            }
+            catch (err) {
+                this.logger.error(`Failed to backfill drawId=${drawId}: ${err.message}`);
+            }
+        }
+        this.logger.log(`Draw backfill complete. Processed ${processed} events.`);
+        return { processed };
+    }
     async backfillTicketFromTxHash(txHash) {
         if (!txHash || !txHash.startsWith('0x') || txHash.length < 66) {
             throw new Error('Invalid txHash');
