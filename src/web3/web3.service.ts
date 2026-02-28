@@ -12,7 +12,7 @@ export class Web3Service implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   onModuleInit() {
     this.initProvider();
@@ -143,7 +143,8 @@ export class Web3Service implements OnModuleInit {
       typeof toBlock === 'number' && toBlock >= fromBlock ? toBlock : undefined;
 
     this.logger.log(
-      `Starting backfill from block ${fromBlock}${endBlock !== undefined ? ` to block ${endBlock}` : ''
+      `Starting backfill from block ${fromBlock}${
+        endBlock !== undefined ? ` to block ${endBlock}` : ''
       }`,
     );
 
@@ -194,7 +195,9 @@ export class Web3Service implements OnModuleInit {
         const finalized = await this.contract.drawFinalized(drawId);
 
         if (finalized) {
-          this.logger.log(`Draw ${drawId} is finalized. Fetching winning numbers...`);
+          this.logger.log(
+            `Draw ${drawId} is finalized. Fetching winning numbers...`,
+          );
 
           const numbers: number[] = [];
           for (let i = 0; i < 6; i++) {
@@ -202,7 +205,7 @@ export class Web3Service implements OnModuleInit {
             numbers.push(Number(num));
           }
 
-          // We don't easily have totalPrize from state without recalculating, 
+          // We don't easily have totalPrize from state without recalculating,
           // so we set it to '0' or we could fetch the event for this specific block if needed.
           // Setting to '0' for now as it's just a historic backfill record.
 
@@ -225,10 +228,14 @@ export class Web3Service implements OnModuleInit {
         }
       }
 
-      this.logger.log(`Draw backfill complete. Processed ${processed} finalized draws.`);
+      this.logger.log(
+        `Draw backfill complete. Processed ${processed} finalized draws.`,
+      );
       return { processed };
     } catch (err) {
-      this.logger.error(`Error during state-based draw backfill: ${(err as Error).message}`);
+      this.logger.error(
+        `Error during state-based draw backfill: ${(err as Error).message}`,
+      );
       return { processed };
     }
   }
@@ -325,17 +332,39 @@ export class Web3Service implements OnModuleInit {
 
     if (!latestDraw) {
       this.logger.warn(
-        `No PENDING draw found for Ticket ID ${ticketId}. Using fallback draw.`,
+        `No PENDING draw found for Ticket ID ${ticketId}. Fetching current Draw ID from contract...`,
       );
-      latestDraw = await this.prisma.draw.create({
-        data: {
-          onChainDrawId: 0,
-          winningNumbers: [],
-          totalPrize: '0',
-          status: 'PENDING',
-          executedAt: new Date(),
-        },
-      });
+      try {
+        const currentDrawIdBigInt = await this.contract.currentDrawId();
+        const currentDrawId = Number(currentDrawIdBigInt);
+
+        latestDraw = await this.prisma.draw.upsert({
+          where: { onChainDrawId: currentDrawId },
+          update: {},
+          create: {
+            onChainDrawId: currentDrawId,
+            winningNumbers: [],
+            totalPrize: '0',
+            status: 'PENDING',
+            executedAt: new Date(),
+          },
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Failed to fetch currentDrawId: ${(err as Error).message}. Using fallback draw.`,
+        );
+        latestDraw = await this.prisma.draw.upsert({
+          where: { onChainDrawId: -1 },
+          update: {},
+          create: {
+            onChainDrawId: -1,
+            winningNumbers: [],
+            totalPrize: '0',
+            status: 'PENDING',
+            executedAt: new Date(),
+          },
+        });
+      }
     }
 
     // Upsert Ticket record on onChainTicketId to avoid duplicates

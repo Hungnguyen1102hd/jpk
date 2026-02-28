@@ -208,16 +208,36 @@ let Web3Service = Web3Service_1 = class Web3Service {
             orderBy: { createdAt: 'desc' },
         });
         if (!latestDraw) {
-            this.logger.warn(`No PENDING draw found for Ticket ID ${ticketId}. Using fallback draw.`);
-            latestDraw = await this.prisma.draw.create({
-                data: {
-                    onChainDrawId: 0,
-                    winningNumbers: [],
-                    totalPrize: '0',
-                    status: 'PENDING',
-                    executedAt: new Date(),
-                },
-            });
+            this.logger.warn(`No PENDING draw found for Ticket ID ${ticketId}. Fetching current Draw ID from contract...`);
+            try {
+                const currentDrawIdBigInt = await this.contract.currentDrawId();
+                const currentDrawId = Number(currentDrawIdBigInt);
+                latestDraw = await this.prisma.draw.upsert({
+                    where: { onChainDrawId: currentDrawId },
+                    update: {},
+                    create: {
+                        onChainDrawId: currentDrawId,
+                        winningNumbers: [],
+                        totalPrize: '0',
+                        status: 'PENDING',
+                        executedAt: new Date(),
+                    },
+                });
+            }
+            catch (err) {
+                this.logger.warn(`Failed to fetch currentDrawId: ${err.message}. Using fallback draw.`);
+                latestDraw = await this.prisma.draw.upsert({
+                    where: { onChainDrawId: -1 },
+                    update: {},
+                    create: {
+                        onChainDrawId: -1,
+                        winningNumbers: [],
+                        totalPrize: '0',
+                        status: 'PENDING',
+                        executedAt: new Date(),
+                    },
+                });
+            }
         }
         await this.prisma.ticket.upsert({
             where: { onChainTicketId: Number(ticketId) },

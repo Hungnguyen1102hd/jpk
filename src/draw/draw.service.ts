@@ -45,7 +45,7 @@ export class DrawService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   async getJackpotStats(): Promise<JackpotStatsResponse> {
     try {

@@ -3,7 +3,7 @@ import { Web3Service } from './web3.service';
 
 @Controller('api/admin')
 export class Web3Controller {
-  constructor(private readonly web3Service: Web3Service) { }
+  constructor(private readonly web3Service: Web3Service) {}
 
   /**
    * Backfill TicketPurchased events from a given block range into the database.
