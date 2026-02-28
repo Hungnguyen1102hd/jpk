@@ -45,7 +45,7 @@ export class DrawService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async getJackpotStats(): Promise<JackpotStatsResponse> {
     try {
@@ -180,7 +180,7 @@ export class DrawService {
         return {
           id: draw.id,
           onChainDrawId: draw.onChainDrawId,
-          winningNumbers: draw.winningNumbers.map(Number),
+          winningNumbers: draw.winningNumbers.map(Number).sort((a, b) => a - b),
           totalPrize: draw.totalPrize,
           status: draw.status,
           executedAt: draw.executedAt.toISOString(),
