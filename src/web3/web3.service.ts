@@ -239,6 +239,91 @@ export class Web3Service implements OnModuleInit {
   }
 
   /**
+   * Backfill a single draw by transaction hash, using eth_getTransactionReceipt.
+   */
+  async backfillDrawFromTxHash(
+    txHash: string,
+  ): Promise<{ processed: number }> {
+    if (!txHash || !txHash.startsWith('0x') || txHash.length < 66) {
+      throw new Error('Invalid txHash');
+    }
+
+    this.logger.log(`Backfilling DrawExecuted from tx ${txHash}`);
+
+    const receipt = await this.provider.getTransactionReceipt(txHash);
+    if (!receipt) {
+      this.logger.warn(`No receipt found for tx ${txHash}`);
+      return { processed: 0 };
+    }
+
+    const logsForContract = receipt.logs.filter(
+      (log) =>
+        log.address.toLowerCase() ===
+        this.contract.target.toString().toLowerCase(),
+    );
+
+    let decoded: {
+      drawId: bigint;
+      winningNumbers: readonly number[];
+      totalPrize: bigint;
+    } | null = null;
+
+    for (const log of logsForContract) {
+      try {
+        const parsed = this.contract.interface.decodeEventLog(
+          'DrawExecuted',
+          log.data,
+          log.topics,
+        ) as unknown as {
+          drawId: bigint;
+          winningNumbers: readonly number[];
+          totalPrize: bigint;
+        };
+        decoded = parsed;
+        break;
+      } catch {
+        // Not the DrawExecuted event, continue
+      }
+    }
+
+    if (!decoded) {
+      this.logger.warn(`No DrawExecuted log found in tx ${txHash}; skipping.`);
+      return { processed: 0 };
+    }
+
+    const { drawId, winningNumbers, totalPrize } = decoded;
+
+    try {
+      this.logger.log(
+        `Backfilling DrawExecuted event: drawId=${drawId}, prize=${totalPrize}`,
+      );
+
+      await this.prisma.draw.upsert({
+        where: { onChainDrawId: Number(drawId) },
+        update: {
+          winningNumbers: Array.from(winningNumbers).map(Number),
+          totalPrize: totalPrize.toString(),
+          status: 'COMPLETED',
+        },
+        create: {
+          onChainDrawId: Number(drawId),
+          winningNumbers: Array.from(winningNumbers).map(Number),
+          totalPrize: totalPrize.toString(),
+          status: 'COMPLETED',
+          executedAt: new Date(),
+        },
+      });
+
+      return { processed: 1 };
+    } catch (err) {
+      this.logger.error(
+        `Failed to backfill drawId=${drawId}: ${(err as Error).message}`,
+      );
+      return { processed: 0 };
+    }
+  }
+
+  /**
    * Backfill a single ticket by transaction hash, using eth_getTransactionReceipt
    * instead of eth_getLogs to avoid provider rate limits.
    */

@@ -52,6 +52,12 @@ let Web3Controller = class Web3Controller {
         }
         return this.web3Service.backfillTicketFromTxHash(txHash);
     }
+    async backfillDrawByTx(txHash) {
+        if (!txHash) {
+            throw new common_1.BadRequestException('Query parameter "txHash" is required.');
+        }
+        return this.web3Service.backfillDrawFromTxHash(txHash);
+    }
 };
 exports.Web3Controller = Web3Controller;
 __decorate([
@@ -77,6 +83,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], Web3Controller.prototype, "backfillTicketByTx", null);
+__decorate([
+    (0, common_1.Get)('backfill-draw-by-tx'),
+    __param(0, (0, common_1.Query)('txHash')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], Web3Controller.prototype, "backfillDrawByTx", null);
 exports.Web3Controller = Web3Controller = __decorate([
     (0, common_1.Controller)('api/admin'),
     __metadata("design:paramtypes", [web3_service_1.Web3Service])

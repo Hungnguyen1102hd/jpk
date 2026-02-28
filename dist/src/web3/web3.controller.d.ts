@@ -11,4 +11,7 @@ export declare class Web3Controller {
     backfillTicketByTx(txHash?: string): Promise<{
         processed: number;
     }>;
+    backfillDrawByTx(txHash?: string): Promise<{
+        processed: number;
+    }>;
 }

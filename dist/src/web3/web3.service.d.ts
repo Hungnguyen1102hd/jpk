@@ -17,6 +17,9 @@ export declare class Web3Service implements OnModuleInit {
     backfillDrawsFromEvents(fromBlock: number, toBlock?: number): Promise<{
         processed: number;
     }>;
+    backfillDrawFromTxHash(txHash: string): Promise<{
+        processed: number;
+    }>;
     backfillTicketFromTxHash(txHash: string): Promise<{
         processed: number;
     }>;

@@ -83,4 +83,19 @@ export class Web3Controller {
 
     return this.web3Service.backfillTicketFromTxHash(txHash);
   }
+
+  /**
+   * Backfill a single DrawExecuted event from a specific transaction hash.
+   *
+   * Example:
+   *   GET /api/admin/backfill-draw-by-tx?txHash=0x...
+   */
+  @Get('backfill-draw-by-tx')
+  async backfillDrawByTx(@Query('txHash') txHash?: string) {
+    if (!txHash) {
+      throw new BadRequestException('Query parameter "txHash" is required.');
+    }
+
+    return this.web3Service.backfillDrawFromTxHash(txHash);
+  }
 }
