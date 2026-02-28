@@ -38,64 +38,13 @@ export class Web3Controller {
   }
 
   /**
-   * Backfill DrawExecuted events from a given block range into the database.
+   * Backfill all DrawExecuted events by reading the contract state.
    *
    * Example:
-   *   GET /api/admin/backfill-draws?fromBlock=9256400&toBlock=9256500
+   *   GET /api/admin/backfill-draws
    */
   @Get('backfill-draws')
-  async backfillDraws(
-    @Query('fromBlock') fromBlockParam?: string,
-    @Query('toBlock') toBlockParam?: string,
-  ) {
-    const fromBlock = Number(fromBlockParam);
-    if (!Number.isInteger(fromBlock) || fromBlock < 0) {
-      throw new BadRequestException(
-        'Query parameter "fromBlock" is required and must be a non-negative integer.',
-      );
-    }
-
-    const toBlock =
-      typeof toBlockParam === 'string' && toBlockParam.length > 0
-        ? Number(toBlockParam)
-        : undefined;
-
-    if (toBlock !== undefined && (!Number.isInteger(toBlock) || toBlock < 0)) {
-      throw new BadRequestException(
-        'Query parameter "toBlock", if provided, must be a non-negative integer.',
-      );
-    }
-
-    return this.web3Service.backfillDrawsFromEvents(fromBlock, toBlock);
-  }
-
-  /**
-   * Backfill a single TicketPurchased event from a specific transaction hash.
-   *
-   * Example:
-   *   GET /api/admin/backfill-ticket-by-tx?txHash=0x...
-   */
-  @Get('backfill-ticket-by-tx')
-  async backfillTicketByTx(@Query('txHash') txHash?: string) {
-    if (!txHash) {
-      throw new BadRequestException('Query parameter "txHash" is required.');
-    }
-
-    return this.web3Service.backfillTicketFromTxHash(txHash);
-  }
-
-  /**
-   * Backfill a single DrawExecuted event from a specific transaction hash.
-   *
-   * Example:
-   *   GET /api/admin/backfill-draw-by-tx?txHash=0x...
-   */
-  @Get('backfill-draw-by-tx')
-  async backfillDrawByTx(@Query('txHash') txHash?: string) {
-    if (!txHash) {
-      throw new BadRequestException('Query parameter "txHash" is required.');
-    }
-
-    return this.web3Service.backfillDrawFromTxHash(txHash);
+  async backfillDraws() {
+    return this.web3Service.backfillAllDraws();
   }
 }

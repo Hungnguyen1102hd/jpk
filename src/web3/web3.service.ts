@@ -40,6 +40,9 @@ export class Web3Service implements OnModuleInit {
     const abi = [
       'event TicketPurchased(address indexed buyer, uint256 ticketId, uint8[6] numbers)',
       'event DrawExecuted(uint256 indexed drawId, uint8[6] winningNumbers, uint256 totalPrize)',
+      'function currentDrawId() view returns (uint256)',
+      'function drawFinalized(uint256) view returns (bool)',
+      'function winningNumbers(uint256, uint256) view returns (uint8)',
     ];
 
     this.contract = new ethers.Contract(contractAddress, abi, this.provider);
@@ -174,152 +177,59 @@ export class Web3Service implements OnModuleInit {
   }
 
   /**
-   * Backfill draws by scanning historical DrawExecuted events using eth_getLogs.
+   * Backfill draws by directly reading the smart contract state instead of events.
+   * This avoids rate limits and log pruning issues on public RPC nodes.
    */
-  async backfillDrawsFromEvents(
-    fromBlock: number,
-    toBlock?: number,
-  ): Promise<{ processed: number }> {
-    if (!Number.isInteger(fromBlock) || fromBlock < 0) {
-      throw new Error('fromBlock must be a non-negative integer');
-    }
-
-    const endBlock =
-      typeof toBlock === 'number' && toBlock >= fromBlock ? toBlock : undefined;
-
-    this.logger.log(
-      `Starting draw backfill from block ${fromBlock}${endBlock !== undefined ? ` to block ${endBlock}` : ''
-      }`,
-    );
-
-    const filter = this.contract.filters.DrawExecuted();
-    const logs = await this.contract.queryFilter(filter, fromBlock, endBlock);
-
-    this.logger.log(`Found ${logs.length} DrawExecuted events to process.`);
-
+  async backfillAllDraws(): Promise<{ processed: number }> {
+    this.logger.log('Starting draw backfill via direct state read...');
     let processed = 0;
-    for (const log of logs) {
-      const eventLog = log as unknown as {
-        args: { drawId: bigint; winningNumbers: readonly number[]; totalPrize: bigint };
-      };
-      const { drawId, winningNumbers, totalPrize } = eventLog.args;
-
-      try {
-        this.logger.log(
-          `Backfilling DrawExecuted event: drawId=${drawId}, prize=${totalPrize}`,
-        );
-
-        // Create or update Draw record
-        await this.prisma.draw.upsert({
-          where: { onChainDrawId: Number(drawId) },
-          update: {
-            winningNumbers: Array.from(winningNumbers).map(Number),
-            totalPrize: totalPrize.toString(),
-            status: 'COMPLETED',
-          },
-          create: {
-            onChainDrawId: Number(drawId),
-            winningNumbers: Array.from(winningNumbers).map(Number),
-            totalPrize: totalPrize.toString(),
-            status: 'COMPLETED',
-            executedAt: new Date(),
-          },
-        });
-
-        processed += 1;
-      } catch (err) {
-        this.logger.error(
-          `Failed to backfill drawId=${drawId}: ${(err as Error).message}`,
-        );
-      }
-    }
-
-    this.logger.log(`Draw backfill complete. Processed ${processed} events.`);
-    return { processed };
-  }
-
-  /**
-   * Backfill a single draw by transaction hash, using eth_getTransactionReceipt.
-   */
-  async backfillDrawFromTxHash(
-    txHash: string,
-  ): Promise<{ processed: number }> {
-    if (!txHash || !txHash.startsWith('0x') || txHash.length < 66) {
-      throw new Error('Invalid txHash');
-    }
-
-    this.logger.log(`Backfilling DrawExecuted from tx ${txHash}`);
-
-    const receipt = await this.provider.getTransactionReceipt(txHash);
-    if (!receipt) {
-      this.logger.warn(`No receipt found for tx ${txHash}`);
-      return { processed: 0 };
-    }
-
-    const logsForContract = receipt.logs.filter(
-      (log) =>
-        log.address.toLowerCase() ===
-        this.contract.target.toString().toLowerCase(),
-    );
-
-    let decoded: {
-      drawId: bigint;
-      winningNumbers: readonly number[];
-      totalPrize: bigint;
-    } | null = null;
-
-    for (const log of logsForContract) {
-      try {
-        const parsed = this.contract.interface.decodeEventLog(
-          'DrawExecuted',
-          log.data,
-          log.topics,
-        ) as unknown as {
-          drawId: bigint;
-          winningNumbers: readonly number[];
-          totalPrize: bigint;
-        };
-        decoded = parsed;
-        break;
-      } catch {
-        // Not the DrawExecuted event, continue
-      }
-    }
-
-    if (!decoded) {
-      this.logger.warn(`No DrawExecuted log found in tx ${txHash}; skipping.`);
-      return { processed: 0 };
-    }
-
-    const { drawId, winningNumbers, totalPrize } = decoded;
 
     try {
-      this.logger.log(
-        `Backfilling DrawExecuted event: drawId=${drawId}, prize=${totalPrize}`,
-      );
+      const currentDrawIdBigInt = await this.contract.currentDrawId();
+      const currentDrawId = Number(currentDrawIdBigInt);
 
-      await this.prisma.draw.upsert({
-        where: { onChainDrawId: Number(drawId) },
-        update: {
-          winningNumbers: Array.from(winningNumbers).map(Number),
-          totalPrize: totalPrize.toString(),
-          status: 'COMPLETED',
-        },
-        create: {
-          onChainDrawId: Number(drawId),
-          winningNumbers: Array.from(winningNumbers).map(Number),
-          totalPrize: totalPrize.toString(),
-          status: 'COMPLETED',
-          executedAt: new Date(),
-        },
-      });
+      this.logger.log(`Current Draw ID on contract: ${currentDrawId}`);
 
-      return { processed: 1 };
+      for (let drawId = 0; drawId < currentDrawId; drawId++) {
+        const finalized = await this.contract.drawFinalized(drawId);
+
+        if (finalized) {
+          this.logger.log(`Draw ${drawId} is finalized. Fetching winning numbers...`);
+
+          const numbers: number[] = [];
+          for (let i = 0; i < 6; i++) {
+            const num = await this.contract.winningNumbers(drawId, i);
+            numbers.push(Number(num));
+          }
+
+          // We don't easily have totalPrize from state without recalculating, 
+          // so we set it to '0' or we could fetch the event for this specific block if needed.
+          // Setting to '0' for now as it's just a historic backfill record.
+
+          await this.prisma.draw.upsert({
+            where: { onChainDrawId: drawId },
+            update: {
+              winningNumbers: numbers,
+              status: 'COMPLETED',
+            },
+            create: {
+              onChainDrawId: drawId,
+              winningNumbers: numbers,
+              totalPrize: '0',
+              status: 'COMPLETED',
+              executedAt: new Date(),
+            },
+          });
+
+          processed++;
+        }
+      }
+
+      this.logger.log(`Draw backfill complete. Processed ${processed} finalized draws.`);
+      return { processed };
     } catch (err) {
-      this.logger.error(
-        `Failed to backfill drawId=${drawId}: ${(err as Error).message}`,
-      );
-      return { processed: 0 };
+      this.logger.error(`Error during state-based draw backfill: ${(err as Error).message}`);
+      return { processed };
     }
   }
 

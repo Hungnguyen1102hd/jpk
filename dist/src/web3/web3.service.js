@@ -43,6 +43,9 @@ let Web3Service = Web3Service_1 = class Web3Service {
         const abi = [
             'event TicketPurchased(address indexed buyer, uint256 ticketId, uint8[6] numbers)',
             'event DrawExecuted(uint256 indexed drawId, uint8[6] winningNumbers, uint256 totalPrize)',
+            'function currentDrawId() view returns (uint256)',
+            'function drawFinalized(uint256) view returns (bool)',
+            'function winningNumbers(uint256, uint256) view returns (uint8)',
         ];
         this.contract = new ethers_1.ethers.Contract(contractAddress, abi, this.provider);
     }
@@ -123,94 +126,45 @@ let Web3Service = Web3Service_1 = class Web3Service {
         this.logger.log(`Backfill complete. Processed ${processed} events.`);
         return { processed };
     }
-    async backfillDrawsFromEvents(fromBlock, toBlock) {
-        if (!Number.isInteger(fromBlock) || fromBlock < 0) {
-            throw new Error('fromBlock must be a non-negative integer');
-        }
-        const endBlock = typeof toBlock === 'number' && toBlock >= fromBlock ? toBlock : undefined;
-        this.logger.log(`Starting draw backfill from block ${fromBlock}${endBlock !== undefined ? ` to block ${endBlock}` : ''}`);
-        const filter = this.contract.filters.DrawExecuted();
-        const logs = await this.contract.queryFilter(filter, fromBlock, endBlock);
-        this.logger.log(`Found ${logs.length} DrawExecuted events to process.`);
+    async backfillAllDraws() {
+        this.logger.log('Starting draw backfill via direct state read...');
         let processed = 0;
-        for (const log of logs) {
-            const eventLog = log;
-            const { drawId, winningNumbers, totalPrize } = eventLog.args;
-            try {
-                this.logger.log(`Backfilling DrawExecuted event: drawId=${drawId}, prize=${totalPrize}`);
-                await this.prisma.draw.upsert({
-                    where: { onChainDrawId: Number(drawId) },
-                    update: {
-                        winningNumbers: Array.from(winningNumbers).map(Number),
-                        totalPrize: totalPrize.toString(),
-                        status: 'COMPLETED',
-                    },
-                    create: {
-                        onChainDrawId: Number(drawId),
-                        winningNumbers: Array.from(winningNumbers).map(Number),
-                        totalPrize: totalPrize.toString(),
-                        status: 'COMPLETED',
-                        executedAt: new Date(),
-                    },
-                });
-                processed += 1;
-            }
-            catch (err) {
-                this.logger.error(`Failed to backfill drawId=${drawId}: ${err.message}`);
-            }
-        }
-        this.logger.log(`Draw backfill complete. Processed ${processed} events.`);
-        return { processed };
-    }
-    async backfillDrawFromTxHash(txHash) {
-        if (!txHash || !txHash.startsWith('0x') || txHash.length < 66) {
-            throw new Error('Invalid txHash');
-        }
-        this.logger.log(`Backfilling DrawExecuted from tx ${txHash}`);
-        const receipt = await this.provider.getTransactionReceipt(txHash);
-        if (!receipt) {
-            this.logger.warn(`No receipt found for tx ${txHash}`);
-            return { processed: 0 };
-        }
-        const logsForContract = receipt.logs.filter((log) => log.address.toLowerCase() ===
-            this.contract.target.toString().toLowerCase());
-        let decoded = null;
-        for (const log of logsForContract) {
-            try {
-                const parsed = this.contract.interface.decodeEventLog('DrawExecuted', log.data, log.topics);
-                decoded = parsed;
-                break;
-            }
-            catch {
-            }
-        }
-        if (!decoded) {
-            this.logger.warn(`No DrawExecuted log found in tx ${txHash}; skipping.`);
-            return { processed: 0 };
-        }
-        const { drawId, winningNumbers, totalPrize } = decoded;
         try {
-            this.logger.log(`Backfilling DrawExecuted event: drawId=${drawId}, prize=${totalPrize}`);
-            await this.prisma.draw.upsert({
-                where: { onChainDrawId: Number(drawId) },
-                update: {
-                    winningNumbers: Array.from(winningNumbers).map(Number),
-                    totalPrize: totalPrize.toString(),
-                    status: 'COMPLETED',
-                },
-                create: {
-                    onChainDrawId: Number(drawId),
-                    winningNumbers: Array.from(winningNumbers).map(Number),
-                    totalPrize: totalPrize.toString(),
-                    status: 'COMPLETED',
-                    executedAt: new Date(),
-                },
-            });
-            return { processed: 1 };
+            const currentDrawIdBigInt = await this.contract.currentDrawId();
+            const currentDrawId = Number(currentDrawIdBigInt);
+            this.logger.log(`Current Draw ID on contract: ${currentDrawId}`);
+            for (let drawId = 0; drawId < currentDrawId; drawId++) {
+                const finalized = await this.contract.drawFinalized(drawId);
+                if (finalized) {
+                    this.logger.log(`Draw ${drawId} is finalized. Fetching winning numbers...`);
+                    const numbers = [];
+                    for (let i = 0; i < 6; i++) {
+                        const num = await this.contract.winningNumbers(drawId, i);
+                        numbers.push(Number(num));
+                    }
+                    await this.prisma.draw.upsert({
+                        where: { onChainDrawId: drawId },
+                        update: {
+                            winningNumbers: numbers,
+                            status: 'COMPLETED',
+                        },
+                        create: {
+                            onChainDrawId: drawId,
+                            winningNumbers: numbers,
+                            totalPrize: '0',
+                            status: 'COMPLETED',
+                            executedAt: new Date(),
+                        },
+                    });
+                    processed++;
+                }
+            }
+            this.logger.log(`Draw backfill complete. Processed ${processed} finalized draws.`);
+            return { processed };
         }
         catch (err) {
-            this.logger.error(`Failed to backfill drawId=${drawId}: ${err.message}`);
-            return { processed: 0 };
+            this.logger.error(`Error during state-based draw backfill: ${err.message}`);
+            return { processed };
         }
     }
     async backfillTicketFromTxHash(txHash) {
