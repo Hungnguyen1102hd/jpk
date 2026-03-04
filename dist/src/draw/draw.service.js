@@ -198,7 +198,7 @@ let DrawService = DrawService_1 = class DrawService {
                         name: 'Jackpot',
                         match: '6 số',
                         winners: jackpotWinners,
-                        prizeValue: '100% Jackpot',
+                        prizeValue: latestDraw.totalPrize,
                     },
                     {
                         name: 'Giải Nhất',
