@@ -1,13 +1,17 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Contract, JsonRpcProvider, Wallet } from 'ethers';
+import { Web3Service } from '../web3/web3.service';
 
 @Injectable()
 export class DrawScheduler implements OnModuleInit {
   private readonly logger = new Logger(DrawScheduler.name);
   private hasExecutedInCurrentWindow = false;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly web3Service: Web3Service,
+  ) { }
 
   onModuleInit() {
     const enabled =
@@ -118,6 +122,9 @@ export class DrawScheduler implements OnModuleInit {
       this.logger.log(
         `executeDraw transaction confirmed in block ${receipt.blockNumber}.`,
       );
+
+      this.logger.log('Triggering explicit state backfill to capture draw results...');
+      await this.web3Service.backfillAllDraws();
     } catch (error) {
       this.logger.error(
         `executeDraw transaction failed: ${(error as Error).message}`,

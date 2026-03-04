@@ -11,11 +11,13 @@ const common_1 = require("@nestjs/common");
 const draw_service_1 = require("./draw.service");
 const draw_controller_1 = require("./draw.controller");
 const draw_scheduler_1 = require("./draw.scheduler");
+const web3_module_1 = require("../web3/web3.module");
 let DrawModule = class DrawModule {
 };
 exports.DrawModule = DrawModule;
 exports.DrawModule = DrawModule = __decorate([
     (0, common_1.Module)({
+        imports: [web3_module_1.Web3Module],
         providers: [draw_service_1.DrawService, draw_scheduler_1.DrawScheduler],
         controllers: [draw_controller_1.DrawController],
     })

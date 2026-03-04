@@ -14,12 +14,15 @@ exports.DrawScheduler = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const ethers_1 = require("ethers");
+const web3_service_1 = require("../web3/web3.service");
 let DrawScheduler = DrawScheduler_1 = class DrawScheduler {
     configService;
+    web3Service;
     logger = new common_1.Logger(DrawScheduler_1.name);
     hasExecutedInCurrentWindow = false;
-    constructor(configService) {
+    constructor(configService, web3Service) {
         this.configService = configService;
+        this.web3Service = web3Service;
     }
     onModuleInit() {
         const enabled = this.configService.get('ENABLE_AUTO_DRAW') === 'true';
@@ -90,6 +93,8 @@ let DrawScheduler = DrawScheduler_1 = class DrawScheduler {
             this.logger.log(`Submitted executeDraw transaction. Hash: ${tx.hash}`);
             const receipt = await tx.wait();
             this.logger.log(`executeDraw transaction confirmed in block ${receipt.blockNumber}.`);
+            this.logger.log('Triggering explicit state backfill to capture draw results...');
+            await this.web3Service.backfillAllDraws();
         }
         catch (error) {
             this.logger.error(`executeDraw transaction failed: ${error.message}`);
@@ -99,6 +104,7 @@ let DrawScheduler = DrawScheduler_1 = class DrawScheduler {
 exports.DrawScheduler = DrawScheduler;
 exports.DrawScheduler = DrawScheduler = DrawScheduler_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [config_1.ConfigService])
+    __metadata("design:paramtypes", [config_1.ConfigService,
+        web3_service_1.Web3Service])
 ], DrawScheduler);
 //# sourceMappingURL=draw.scheduler.js.map

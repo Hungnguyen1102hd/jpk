@@ -17,6 +17,7 @@ exports.Web3Module = Web3Module = __decorate([
     (0, common_1.Module)({
         providers: [web3_service_1.Web3Service],
         controllers: [web3_controller_1.Web3Controller],
+        exports: [web3_service_1.Web3Service],
     })
 ], Web3Module);
 //# sourceMappingURL=web3.module.js.map
