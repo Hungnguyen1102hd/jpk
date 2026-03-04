@@ -11,7 +11,7 @@ export class DrawScheduler implements OnModuleInit {
   constructor(
     private readonly configService: ConfigService,
     private readonly web3Service: Web3Service,
-  ) {}
+  ) { }
 
   onModuleInit() {
     const enabled =
@@ -63,19 +63,12 @@ export class DrawScheduler implements OnModuleInit {
   }
 
   /**
-   * Draw schedule: 18:30 (UTC+7) on Tue / Thu / Sat.
+   * Draw schedule: 18:30 (UTC+7) Daily.
    * We consider a small execution window of [18:30, 18:40).
    */
   private isDrawWindow(nowVn: Date): boolean {
-    const drawDays = [2, 4, 6]; // Tue(2), Thu(4), Sat(6) in JS getUTCDay when shifted to VN time.
-
-    const day = nowVn.getUTCDay();
     const hour = nowVn.getUTCHours();
     const minute = nowVn.getUTCMinutes();
-
-    if (!drawDays.includes(day)) {
-      return false;
-    }
 
     const minutesOfDay = hour * 60 + minute;
     const windowStart = 18 * 60 + 30; // 18:30

@@ -304,28 +304,19 @@ export class DrawService {
   }
 
   private computeNextDrawInVietnamTime(current: Date): Date {
-    const drawDays = [2, 4, 6]; // Tue, Thu, Sat (0 = Sun)
     const targetHour = 18;
     const targetMinute = 30;
 
-    const currentDay = current.getUTCDay();
     const currentHour = current.getUTCHours();
     const currentMinute = current.getUTCMinutes();
 
-    const isDrawDay = drawDays.includes(currentDay);
     const isAfterDrawTime =
       currentHour > targetHour ||
       (currentHour === targetHour && currentMinute >= targetMinute);
 
     let daysToAdd = 0;
-    if (!isDrawDay || isAfterDrawTime) {
-      for (let i = 1; i <= 7; i += 1) {
-        const nextDay = (currentDay + i) % 7;
-        if (drawDays.includes(nextDay)) {
-          daysToAdd = i;
-          break;
-        }
-      }
+    if (isAfterDrawTime) {
+      daysToAdd = 1;
     }
 
     const result = new Date(current);
