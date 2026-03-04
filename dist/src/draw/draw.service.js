@@ -15,6 +15,11 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../prisma/prisma.service");
 const ethers_1 = require("ethers");
+const PRIZE_CONFIG = {
+    FIRST_PRIZE: '5000',
+    SECOND_PRIZE: '500',
+    THIRD_PRIZE: '50',
+};
 let DrawService = DrawService_1 = class DrawService {
     prisma;
     configService;
@@ -163,10 +168,10 @@ let DrawService = DrawService_1 = class DrawService {
                     prizePool: '0',
                     transactionHash: null,
                     tiers: [
-                        { name: 'Jackpot', match: '6 số', winners: 0, prizeValue: currentJackpot },
-                        { name: 'Giải Nhất', match: '5 số', winners: 0, prizeValue: '5000' },
-                        { name: 'Giải Nhì', match: '4 số', winners: 0, prizeValue: '500' },
-                        { name: 'Giải Ba', match: '3 số', winners: 0, prizeValue: '50' },
+                        { tier: 'jackpot', match: 6, winners: 0, prizeValue: currentJackpot },
+                        { tier: 'first', match: 5, winners: 0, prizeValue: PRIZE_CONFIG.FIRST_PRIZE },
+                        { tier: 'second', match: 4, winners: 0, prizeValue: PRIZE_CONFIG.SECOND_PRIZE },
+                        { tier: 'third', match: 3, winners: 0, prizeValue: PRIZE_CONFIG.THIRD_PRIZE },
                     ],
                 };
             }
@@ -204,30 +209,10 @@ let DrawService = DrawService_1 = class DrawService {
                 prizePool: jackpotPrize,
                 transactionHash: latestDraw.transactionHash,
                 tiers: [
-                    {
-                        name: 'Jackpot',
-                        match: '6 số',
-                        winners: jackpotWinners,
-                        prizeValue: jackpotPrize,
-                    },
-                    {
-                        name: 'Giải Nhất',
-                        match: '5 số',
-                        winners: firstPrizeWinners,
-                        prizeValue: '5000',
-                    },
-                    {
-                        name: 'Giải Nhì',
-                        match: '4 số',
-                        winners: secondPrizeWinners,
-                        prizeValue: '500',
-                    },
-                    {
-                        name: 'Giải Ba',
-                        match: '3 số',
-                        winners: thirdPrizeWinners,
-                        prizeValue: '50',
-                    },
+                    { tier: 'jackpot', match: 6, winners: jackpotWinners, prizeValue: jackpotPrize },
+                    { tier: 'first', match: 5, winners: firstPrizeWinners, prizeValue: PRIZE_CONFIG.FIRST_PRIZE },
+                    { tier: 'second', match: 4, winners: secondPrizeWinners, prizeValue: PRIZE_CONFIG.SECOND_PRIZE },
+                    { tier: 'third', match: 3, winners: thirdPrizeWinners, prizeValue: PRIZE_CONFIG.THIRD_PRIZE },
                 ],
             };
         }

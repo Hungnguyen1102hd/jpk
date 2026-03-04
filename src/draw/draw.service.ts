@@ -40,10 +40,10 @@ export interface DrawHistoryItem {
 }
 
 export interface PrizeTier {
-  name: string;
-  match: string;
+  tier: string;       // 'jackpot' | 'first' | 'second' | 'third'
+  match: number;      // 6, 5, 4, 3
   winners: number;
-  prizeValue: string;
+  prizeValue: string;  // numeric string or formatted balance
 }
 
 export interface LatestDrawResultResponse {
@@ -54,6 +54,18 @@ export interface LatestDrawResultResponse {
   transactionHash: string | null;
   tiers: PrizeTier[];
 }
+
+/**
+ * Prize configuration for non-jackpot tiers.
+ * Jackpot = real-time balance from smart contract.
+ * Smaller prizes = fixed JPK amount per winner (off-chain distribution).
+ * These can be moved to env/ConfigService later.
+ */
+const PRIZE_CONFIG = {
+  FIRST_PRIZE: '5000',   // 5 matched — fixed 5,000 JPK per winner
+  SECOND_PRIZE: '500',   // 4 matched — fixed 500 JPK per winner
+  THIRD_PRIZE: '50',     // 3 matched — fixed 50 JPK per winner
+};
 
 @Injectable()
 export class DrawService {
@@ -244,10 +256,10 @@ export class DrawService {
           prizePool: '0',
           transactionHash: null,
           tiers: [
-            { name: 'Jackpot', match: '6 số', winners: 0, prizeValue: currentJackpot },
-            { name: 'Giải Nhất', match: '5 số', winners: 0, prizeValue: '5000' },
-            { name: 'Giải Nhì', match: '4 số', winners: 0, prizeValue: '500' },
-            { name: 'Giải Ba', match: '3 số', winners: 0, prizeValue: '50' },
+            { tier: 'jackpot', match: 6, winners: 0, prizeValue: currentJackpot },
+            { tier: 'first', match: 5, winners: 0, prizeValue: PRIZE_CONFIG.FIRST_PRIZE },
+            { tier: 'second', match: 4, winners: 0, prizeValue: PRIZE_CONFIG.SECOND_PRIZE },
+            { tier: 'third', match: 3, winners: 0, prizeValue: PRIZE_CONFIG.THIRD_PRIZE },
           ],
         };
       }
@@ -290,30 +302,10 @@ export class DrawService {
         prizePool: jackpotPrize,
         transactionHash: latestDraw.transactionHash,
         tiers: [
-          {
-            name: 'Jackpot',
-            match: '6 số',
-            winners: jackpotWinners,
-            prizeValue: jackpotPrize,
-          },
-          {
-            name: 'Giải Nhất',
-            match: '5 số',
-            winners: firstPrizeWinners,
-            prizeValue: '5000',
-          },
-          {
-            name: 'Giải Nhì',
-            match: '4 số',
-            winners: secondPrizeWinners,
-            prizeValue: '500',
-          },
-          {
-            name: 'Giải Ba',
-            match: '3 số',
-            winners: thirdPrizeWinners,
-            prizeValue: '50',
-          },
+          { tier: 'jackpot', match: 6, winners: jackpotWinners, prizeValue: jackpotPrize },
+          { tier: 'first', match: 5, winners: firstPrizeWinners, prizeValue: PRIZE_CONFIG.FIRST_PRIZE },
+          { tier: 'second', match: 4, winners: secondPrizeWinners, prizeValue: PRIZE_CONFIG.SECOND_PRIZE },
+          { tier: 'third', match: 3, winners: thirdPrizeWinners, prizeValue: PRIZE_CONFIG.THIRD_PRIZE },
         ],
       };
     } catch (error) {

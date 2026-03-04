@@ -29,8 +29,8 @@ export interface DrawHistoryItem {
     winnerCount: number;
 }
 export interface PrizeTier {
-    name: string;
-    match: string;
+    tier: string;
+    match: number;
     winners: number;
     prizeValue: string;
 }
