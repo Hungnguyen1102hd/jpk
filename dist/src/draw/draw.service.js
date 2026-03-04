@@ -148,6 +148,14 @@ let DrawService = DrawService_1 = class DrawService {
                 include: { tickets: true },
             });
             if (!latestDraw) {
+                let currentJackpot = '100% Jackpot';
+                try {
+                    const stats = await this.getJackpotStats();
+                    currentJackpot = stats.formattedBalance;
+                }
+                catch (e) {
+                    this.logger.warn(`Could not fetch jackpot stats for empty state: ${e.message}`);
+                }
                 return {
                     drawId: 0,
                     drawDate: new Date().toISOString(),
@@ -155,7 +163,7 @@ let DrawService = DrawService_1 = class DrawService {
                     prizePool: '0',
                     transactionHash: null,
                     tiers: [
-                        { name: 'Jackpot', match: '6 số', winners: 0, prizeValue: '75% Hũ' },
+                        { name: 'Jackpot', match: '6 số', winners: 0, prizeValue: currentJackpot },
                         { name: 'Giải Nhất', match: '5 số', winners: 0, prizeValue: '5000' },
                         { name: 'Giải Nhì', match: '4 số', winners: 0, prizeValue: '500' },
                         { name: 'Giải Ba', match: '3 số', winners: 0, prizeValue: '50' },
@@ -190,7 +198,7 @@ let DrawService = DrawService_1 = class DrawService {
                         name: 'Jackpot',
                         match: '6 số',
                         winners: jackpotWinners,
-                        prizeValue: '75% Hũ',
+                        prizeValue: '100% Jackpot',
                     },
                     {
                         name: 'Giải Nhất',
