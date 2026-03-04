@@ -59,13 +59,8 @@ let DrawScheduler = DrawScheduler_1 = class DrawScheduler {
         }
     }
     isDrawWindow(nowVn) {
-        const drawDays = [2, 4, 6];
-        const day = nowVn.getUTCDay();
         const hour = nowVn.getUTCHours();
         const minute = nowVn.getUTCMinutes();
-        if (!drawDays.includes(day)) {
-            return false;
-        }
         const minutesOfDay = hour * 60 + minute;
         const windowStart = 18 * 60 + 30;
         const windowEnd = 18 * 60 + 40;

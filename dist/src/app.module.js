@@ -13,6 +13,8 @@ const app_service_1 = require("./app.service");
 const prisma_module_1 = require("./prisma/prisma.module");
 const web3_module_1 = require("./web3/web3.module");
 const config_1 = require("@nestjs/config");
+const cache_manager_1 = require("@nestjs/cache-manager");
+const cache_manager_redis_yet_1 = require("cache-manager-redis-yet");
 const ticket_module_1 = require("./ticket/ticket.module");
 const draw_module_1 = require("./draw/draw.module");
 let AppModule = class AppModule {
@@ -22,6 +24,16 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_1.ConfigModule.forRoot({ isGlobal: true }),
+            cache_manager_1.CacheModule.registerAsync({
+                isGlobal: true,
+                imports: [config_1.ConfigModule],
+                useFactory: async (configService) => ({
+                    store: cache_manager_redis_yet_1.redisStore,
+                    url: configService.get('REDIS_URL') || 'redis://localhost:6379',
+                    ttl: 60 * 1000,
+                }),
+                inject: [config_1.ConfigService],
+            }),
             prisma_module_1.PrismaModule,
             web3_module_1.Web3Module,
             ticket_module_1.TicketModule,

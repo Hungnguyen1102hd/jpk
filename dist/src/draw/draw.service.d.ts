@@ -27,6 +27,19 @@ export interface DrawHistoryItem {
     ticketCount: number;
     winnerCount: number;
 }
+export interface PrizeTier {
+    name: string;
+    match: string;
+    winners: number;
+    prizeValue: string;
+}
+export interface LatestDrawResultResponse {
+    drawId: number;
+    drawDate: string;
+    winningNumbers: number[];
+    prizePool: string;
+    tiers: PrizeTier[];
+}
 export declare class DrawService {
     private readonly prisma;
     private readonly configService;
@@ -36,6 +49,7 @@ export declare class DrawService {
     getNextDrawTime(): Promise<NextDrawTimeResponse>;
     getRecentWinners(limit?: number): Promise<RecentWinnerResponse[]>;
     getDrawHistory(limit?: number): Promise<DrawHistoryItem[]>;
+    getLatestDrawResult(): Promise<LatestDrawResultResponse>;
     private computeNextDrawInVietnamTime;
     private maskWalletAddress;
 }

@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DrawController = void 0;
 const common_1 = require("@nestjs/common");
+const cache_manager_1 = require("@nestjs/cache-manager");
 const draw_service_1 = require("./draw.service");
 let DrawController = class DrawController {
     drawService;
@@ -34,16 +35,21 @@ let DrawController = class DrawController {
         const parsedLimit = Number.isNaN(Number(limit)) ? undefined : Number(limit);
         return this.drawService.getDrawHistory(parsedLimit);
     }
+    getLatestDrawResult() {
+        return this.drawService.getLatestDrawResult();
+    }
 };
 exports.DrawController = DrawController;
 __decorate([
     (0, common_1.Get)('jackpot/stats'),
+    (0, cache_manager_1.CacheTTL)(30 * 1000),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], DrawController.prototype, "getJackpotStats", null);
 __decorate([
     (0, common_1.Get)('draws/next-time'),
+    (0, cache_manager_1.CacheTTL)(60 * 60 * 1000),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
@@ -62,8 +68,16 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], DrawController.prototype, "getDrawHistory", null);
+__decorate([
+    (0, common_1.Get)('draws/latest-result'),
+    (0, cache_manager_1.CacheTTL)(60 * 1000),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], DrawController.prototype, "getLatestDrawResult", null);
 exports.DrawController = DrawController = __decorate([
     (0, common_1.Controller)('api'),
+    (0, common_1.UseInterceptors)(cache_manager_1.CacheInterceptor),
     __metadata("design:paramtypes", [draw_service_1.DrawService])
 ], DrawController);
 //# sourceMappingURL=draw.controller.js.map

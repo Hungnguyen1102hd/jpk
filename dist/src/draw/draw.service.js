@@ -138,25 +138,92 @@ let DrawService = DrawService_1 = class DrawService {
             throw new common_1.InternalServerErrorException('Failed to fetch draw history');
         }
     }
+    async getLatestDrawResult() {
+        try {
+            const latestDraw = await this.prisma.draw.findFirst({
+                where: { status: 'COMPLETED' },
+                orderBy: { executedAt: 'desc' },
+                include: { tickets: true },
+            });
+            if (!latestDraw) {
+                return {
+                    drawId: 0,
+                    drawDate: new Date().toISOString(),
+                    winningNumbers: [],
+                    prizePool: '0',
+                    tiers: [
+                        { name: 'Jackpot', match: '6 số', winners: 0, prizeValue: '75% Hũ' },
+                        { name: 'Giải Nhất', match: '5 số', winners: 0, prizeValue: '5000' },
+                        { name: 'Giải Nhì', match: '4 số', winners: 0, prizeValue: '500' },
+                        { name: 'Giải Ba', match: '3 số', winners: 0, prizeValue: '50' },
+                    ],
+                };
+            }
+            let jackpotWinners = 0;
+            let firstPrizeWinners = 0;
+            let secondPrizeWinners = 0;
+            let thirdPrizeWinners = 0;
+            const winningNumbers = latestDraw.winningNumbers.map(Number);
+            for (const ticket of latestDraw.tickets) {
+                const ticketNumbers = ticket.numbers.map(Number);
+                const matchingCount = ticketNumbers.filter((num) => winningNumbers.includes(num)).length;
+                if (matchingCount === 6)
+                    jackpotWinners++;
+                else if (matchingCount === 5)
+                    firstPrizeWinners++;
+                else if (matchingCount === 4)
+                    secondPrizeWinners++;
+                else if (matchingCount === 3)
+                    thirdPrizeWinners++;
+            }
+            return {
+                drawId: latestDraw.onChainDrawId,
+                drawDate: latestDraw.executedAt.toISOString(),
+                winningNumbers: winningNumbers.sort((a, b) => a - b),
+                prizePool: latestDraw.totalPrize,
+                tiers: [
+                    {
+                        name: 'Jackpot',
+                        match: '6 số',
+                        winners: jackpotWinners,
+                        prizeValue: '75% Hũ',
+                    },
+                    {
+                        name: 'Giải Nhất',
+                        match: '5 số',
+                        winners: firstPrizeWinners,
+                        prizeValue: '5000',
+                    },
+                    {
+                        name: 'Giải Nhì',
+                        match: '4 số',
+                        winners: secondPrizeWinners,
+                        prizeValue: '500',
+                    },
+                    {
+                        name: 'Giải Ba',
+                        match: '3 số',
+                        winners: thirdPrizeWinners,
+                        prizeValue: '50',
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            this.logger.error(`Failed to get latest draw result: ${error.message}`);
+            throw new common_1.InternalServerErrorException('Failed to fetch latest draw result');
+        }
+    }
     computeNextDrawInVietnamTime(current) {
-        const drawDays = [2, 4, 6];
         const targetHour = 18;
         const targetMinute = 30;
-        const currentDay = current.getUTCDay();
         const currentHour = current.getUTCHours();
         const currentMinute = current.getUTCMinutes();
-        const isDrawDay = drawDays.includes(currentDay);
         const isAfterDrawTime = currentHour > targetHour ||
             (currentHour === targetHour && currentMinute >= targetMinute);
         let daysToAdd = 0;
-        if (!isDrawDay || isAfterDrawTime) {
-            for (let i = 1; i <= 7; i += 1) {
-                const nextDay = (currentDay + i) % 7;
-                if (drawDays.includes(nextDay)) {
-                    daysToAdd = i;
-                    break;
-                }
-            }
+        if (isAfterDrawTime) {
+            daysToAdd = 1;
         }
         const result = new Date(current);
         result.setUTCDate(current.getUTCDate() + daysToAdd);

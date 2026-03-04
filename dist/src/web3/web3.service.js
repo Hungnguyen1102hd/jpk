@@ -245,22 +245,25 @@ let Web3Service = Web3Service_1 = class Web3Service {
                     },
                 });
             }
-            await this.prisma.ticket.upsert({
-                where: { onChainTicketId: Number(ticketId) },
-                update: {
-                    numbers: Array.from(numbers).map(Number),
-                    drawId: latestDraw.id,
-                    userId: user.id,
-                },
-                create: {
-                    onChainTicketId: Number(ticketId),
-                    numbers: Array.from(numbers).map(Number),
-                    drawId: latestDraw.id,
-                    userId: user.id,
-                },
-            });
-            this.logger.log(`Ticket ${ticketId} saved to database successfully.`);
         }
+        if (!latestDraw) {
+            throw new Error('Failed to find or create a pending draw for ticket');
+        }
+        await this.prisma.ticket.upsert({
+            where: { onChainTicketId: Number(ticketId) },
+            update: {
+                numbers: Array.from(numbers).map(Number),
+                drawId: latestDraw.id,
+                userId: user.id,
+            },
+            create: {
+                onChainTicketId: Number(ticketId),
+                numbers: Array.from(numbers).map(Number),
+                drawId: latestDraw.id,
+                userId: user.id,
+            },
+        });
+        this.logger.log(`Ticket ${ticketId} saved to database successfully.`);
     }
 };
 exports.Web3Service = Web3Service;

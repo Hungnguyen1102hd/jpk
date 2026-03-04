@@ -6,4 +6,5 @@ export declare class DrawController {
     getNextDrawTime(): Promise<import("./draw.service").NextDrawTimeResponse>;
     getRecentWinners(limit?: string): Promise<import("./draw.service").RecentWinnerResponse[]>;
     getDrawHistory(limit?: string): Promise<import("./draw.service").DrawHistoryItem[]>;
+    getLatestDrawResult(): Promise<import("./draw.service").LatestDrawResultResponse>;
 }
