@@ -1,18 +1,22 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseInterceptors } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { DrawService } from './draw.service';
 
 @Controller('api')
+@UseInterceptors(CacheInterceptor)
 export class DrawController {
   constructor(private readonly drawService: DrawService) { }
 
   // 1. Jackpot Pool stats
   @Get('jackpot/stats')
+  @CacheTTL(30 * 1000) // Cache 30 seconds since we query the smart contract dynamically
   getJackpotStats() {
     return this.drawService.getJackpotStats();
   }
 
   // 2. Next draw time
   @Get('draws/next-time')
+  @CacheTTL(60 * 60 * 1000) // Cache 1 hour, logic is mostly static
   getNextDrawTime() {
     return this.drawService.getNextDrawTime();
   }
@@ -33,6 +37,7 @@ export class DrawController {
 
   // 5. Latest draw result for homepage
   @Get('draws/latest-result')
+  @CacheTTL(60 * 1000) // Cache 60 seconds
   getLatestDrawResult() {
     return this.drawService.getLatestDrawResult();
   }
