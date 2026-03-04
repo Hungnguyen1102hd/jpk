@@ -3,7 +3,7 @@ import { DrawService } from './draw.service';
 
 @Controller('api')
 export class DrawController {
-  constructor(private readonly drawService: DrawService) {}
+  constructor(private readonly drawService: DrawService) { }
 
   // 1. Jackpot Pool stats
   @Get('jackpot/stats')
@@ -29,5 +29,11 @@ export class DrawController {
   getDrawHistory(@Query('limit') limit?: string) {
     const parsedLimit = Number.isNaN(Number(limit)) ? undefined : Number(limit);
     return this.drawService.getDrawHistory(parsedLimit);
+  }
+
+  // 5. Latest draw result for homepage
+  @Get('draws/latest-result')
+  getLatestDrawResult() {
+    return this.drawService.getLatestDrawResult();
   }
 }

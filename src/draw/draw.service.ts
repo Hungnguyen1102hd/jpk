@@ -38,6 +38,21 @@ export interface DrawHistoryItem {
   winnerCount: number;
 }
 
+export interface PrizeTier {
+  name: string;
+  match: string;
+  winners: number;
+  prizeValue: string;
+}
+
+export interface LatestDrawResultResponse {
+  drawId: number;
+  drawDate: string;
+  winningNumbers: number[];
+  prizePool: string;
+  tiers: PrizeTier[];
+}
+
 @Injectable()
 export class DrawService {
   private readonly logger = new Logger(DrawService.name);
@@ -45,7 +60,7 @@ export class DrawService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async getJackpotStats(): Promise<JackpotStatsResponse> {
     try {
@@ -193,6 +208,98 @@ export class DrawService {
         `Failed to fetch draw history: ${(error as Error).message}`,
       );
       throw new InternalServerErrorException('Failed to fetch draw history');
+    }
+  }
+
+  /**
+   * Tính toán kết quả kỳ quay gần nhất có người trúng thưởng (COMPLETED).
+   */
+  async getLatestDrawResult(): Promise<LatestDrawResultResponse> {
+    try {
+      // Find the most recent COMPLETED draw
+      const latestDraw = await this.prisma.draw.findFirst({
+        where: { status: 'COMPLETED' },
+        orderBy: { executedAt: 'desc' },
+        include: { tickets: true },
+      });
+
+      if (!latestDraw) {
+        // Option 1: Throw 404
+        // throw new NotFoundException('No completed draws found.');
+
+        // Option 2: Return empty template
+        return {
+          drawId: 0,
+          drawDate: new Date().toISOString(),
+          winningNumbers: [],
+          prizePool: '0',
+          tiers: [
+            { name: 'Jackpot', match: '6 số', winners: 0, prizeValue: '75% Hũ' },
+            { name: 'Giải Nhất', match: '5 số', winners: 0, prizeValue: '5000' },
+            { name: 'Giải Nhì', match: '4 số', winners: 0, prizeValue: '500' },
+            { name: 'Giải Ba', match: '3 số', winners: 0, prizeValue: '50' },
+          ],
+        };
+      }
+
+      let jackpotWinners = 0;
+      let firstPrizeWinners = 0;
+      let secondPrizeWinners = 0;
+      let thirdPrizeWinners = 0;
+
+      const winningNumbers = latestDraw.winningNumbers.map(Number); // Ensure they are numbers
+
+      for (const ticket of latestDraw.tickets) {
+        const ticketNumbers = ticket.numbers.map(Number);
+
+        // Count how many numbers match
+        const matchingCount = ticketNumbers.filter((num) =>
+          winningNumbers.includes(num),
+        ).length;
+
+        if (matchingCount === 6) jackpotWinners++;
+        else if (matchingCount === 5) firstPrizeWinners++;
+        else if (matchingCount === 4) secondPrizeWinners++;
+        else if (matchingCount === 3) thirdPrizeWinners++;
+      }
+
+      return {
+        drawId: latestDraw.onChainDrawId,
+        drawDate: latestDraw.executedAt.toISOString(),
+        winningNumbers: winningNumbers.sort((a, b) => a - b),
+        prizePool: latestDraw.totalPrize, // or any specific formula if needed
+        tiers: [
+          {
+            name: 'Jackpot',
+            match: '6 số',
+            winners: jackpotWinners,
+            prizeValue: '75% Hũ',
+          },
+          {
+            name: 'Giải Nhất',
+            match: '5 số',
+            winners: firstPrizeWinners,
+            prizeValue: '5000',
+          },
+          {
+            name: 'Giải Nhì',
+            match: '4 số',
+            winners: secondPrizeWinners,
+            prizeValue: '500',
+          },
+          {
+            name: 'Giải Ba',
+            match: '3 số',
+            winners: thirdPrizeWinners,
+            prizeValue: '50',
+          },
+        ],
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to get latest draw result: ${(error as Error).message}`,
+      );
+      throw new InternalServerErrorException('Failed to fetch latest draw result');
     }
   }
 
