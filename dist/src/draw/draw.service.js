@@ -187,18 +187,28 @@ let DrawService = DrawService_1 = class DrawService {
                 else if (matchingCount === 3)
                     thirdPrizeWinners++;
             }
+            let jackpotPrize = latestDraw.totalPrize;
+            if (!jackpotPrize || jackpotPrize === '0') {
+                try {
+                    const stats = await this.getJackpotStats();
+                    jackpotPrize = stats.formattedBalance;
+                }
+                catch (e) {
+                    this.logger.warn(`Could not fetch live jackpot balance: ${e.message}`);
+                }
+            }
             return {
                 drawId: latestDraw.onChainDrawId,
                 drawDate: latestDraw.executedAt.toISOString(),
                 winningNumbers: winningNumbers.sort((a, b) => a - b),
-                prizePool: latestDraw.totalPrize,
+                prizePool: jackpotPrize,
                 transactionHash: latestDraw.transactionHash,
                 tiers: [
                     {
                         name: 'Jackpot',
                         match: '6 số',
                         winners: jackpotWinners,
-                        prizeValue: latestDraw.totalPrize,
+                        prizeValue: jackpotPrize,
                     },
                     {
                         name: 'Giải Nhất',

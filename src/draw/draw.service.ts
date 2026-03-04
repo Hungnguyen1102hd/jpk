@@ -257,12 +257,11 @@ export class DrawService {
       let secondPrizeWinners = 0;
       let thirdPrizeWinners = 0;
 
-      const winningNumbers = latestDraw.winningNumbers.map(Number); // Ensure they are numbers
+      const winningNumbers = latestDraw.winningNumbers.map(Number);
 
       for (const ticket of latestDraw.tickets) {
         const ticketNumbers = ticket.numbers.map(Number);
 
-        // Count how many numbers match
         const matchingCount = ticketNumbers.filter((num) =>
           winningNumbers.includes(num),
         ).length;
@@ -273,18 +272,29 @@ export class DrawService {
         else if (matchingCount === 3) thirdPrizeWinners++;
       }
 
+      // If totalPrize is "0" or empty, fetch real-time jackpot from smart contract
+      let jackpotPrize = latestDraw.totalPrize;
+      if (!jackpotPrize || jackpotPrize === '0') {
+        try {
+          const stats = await this.getJackpotStats();
+          jackpotPrize = stats.formattedBalance;
+        } catch (e) {
+          this.logger.warn(`Could not fetch live jackpot balance: ${e.message}`);
+        }
+      }
+
       return {
         drawId: latestDraw.onChainDrawId,
         drawDate: latestDraw.executedAt.toISOString(),
         winningNumbers: winningNumbers.sort((a, b) => a - b),
-        prizePool: latestDraw.totalPrize, // or any specific formula if needed
+        prizePool: jackpotPrize,
         transactionHash: latestDraw.transactionHash,
         tiers: [
           {
             name: 'Jackpot',
             match: '6 số',
             winners: jackpotWinners,
-            prizeValue: latestDraw.totalPrize,
+            prizeValue: jackpotPrize,
           },
           {
             name: 'Giải Nhất',
