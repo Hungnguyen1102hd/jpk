@@ -109,7 +109,7 @@ let DrawService = DrawService_1 = class DrawService {
             const draws = await this.prisma.draw.findMany({
                 where: {
                     status: 'COMPLETED',
-                    onChainDrawId: { gt: 0 },
+                    onChainDrawId: { gte: 0 },
                 },
                 include: {
                     tickets: true,
@@ -143,7 +143,7 @@ let DrawService = DrawService_1 = class DrawService {
     async getLatestDrawResult() {
         try {
             const latestDraw = await this.prisma.draw.findFirst({
-                where: { status: 'COMPLETED', onChainDrawId: { gt: 0 } },
+                where: { status: 'COMPLETED', onChainDrawId: { gte: 0 } },
                 orderBy: { executedAt: 'desc' },
                 include: { tickets: true },
             });
