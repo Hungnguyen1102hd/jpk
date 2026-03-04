@@ -12,7 +12,7 @@ export class Web3Service implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   onModuleInit() {
     this.initProvider();
@@ -143,8 +143,7 @@ export class Web3Service implements OnModuleInit {
       typeof toBlock === 'number' && toBlock >= fromBlock ? toBlock : undefined;
 
     this.logger.log(
-      `Starting backfill from block ${fromBlock}${
-        endBlock !== undefined ? ` to block ${endBlock}` : ''
+      `Starting backfill from block ${fromBlock}${endBlock !== undefined ? ` to block ${endBlock}` : ''
       }`,
     );
 
@@ -373,24 +372,28 @@ export class Web3Service implements OnModuleInit {
           },
         });
       }
+    } // closes if (!latestDraw)
 
-      // Upsert Ticket record on onChainTicketId to avoid duplicates
-      await this.prisma.ticket.upsert({
-        where: { onChainTicketId: Number(ticketId) },
-        update: {
-          numbers: Array.from(numbers).map(Number),
-          drawId: latestDraw.id,
-          userId: user.id,
-        },
-        create: {
-          onChainTicketId: Number(ticketId),
-          numbers: Array.from(numbers).map(Number),
-          drawId: latestDraw.id,
-          userId: user.id,
-        },
-      });
-
-      this.logger.log(`Ticket ${ticketId} saved to database successfully.`);
+    if (!latestDraw) {
+      throw new Error('Failed to find or create a pending draw for ticket');
     }
+
+    // Upsert Ticket record on onChainTicketId to avoid duplicates
+    await this.prisma.ticket.upsert({
+      where: { onChainTicketId: Number(ticketId) },
+      update: {
+        numbers: Array.from(numbers).map(Number),
+        drawId: latestDraw.id,
+        userId: user.id,
+      },
+      create: {
+        onChainTicketId: Number(ticketId),
+        numbers: Array.from(numbers).map(Number),
+        drawId: latestDraw.id,
+        userId: user.id,
+      },
+    });
+
+    this.logger.log(`Ticket ${ticketId} saved to database successfully.`);
   }
 }
