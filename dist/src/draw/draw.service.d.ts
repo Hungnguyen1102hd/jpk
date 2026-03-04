@@ -23,6 +23,7 @@ export interface DrawHistoryItem {
     winningNumbers: number[];
     totalPrize: string;
     status: string;
+    transactionHash: string | null;
     executedAt: string;
     ticketCount: number;
     winnerCount: number;
@@ -38,6 +39,7 @@ export interface LatestDrawResultResponse {
     drawDate: string;
     winningNumbers: number[];
     prizePool: string;
+    transactionHash: string | null;
     tiers: PrizeTier[];
 }
 export declare class DrawService {

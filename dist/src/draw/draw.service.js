@@ -109,6 +109,7 @@ let DrawService = DrawService_1 = class DrawService {
             const draws = await this.prisma.draw.findMany({
                 where: {
                     status: 'COMPLETED',
+                    onChainDrawId: { gt: 0 },
                 },
                 include: {
                     tickets: true,
@@ -127,6 +128,7 @@ let DrawService = DrawService_1 = class DrawService {
                     winningNumbers: draw.winningNumbers.map(Number).sort((a, b) => a - b),
                     totalPrize: draw.totalPrize,
                     status: draw.status,
+                    transactionHash: draw.transactionHash,
                     executedAt: draw.executedAt.toISOString(),
                     ticketCount,
                     winnerCount,
@@ -141,7 +143,7 @@ let DrawService = DrawService_1 = class DrawService {
     async getLatestDrawResult() {
         try {
             const latestDraw = await this.prisma.draw.findFirst({
-                where: { status: 'COMPLETED' },
+                where: { status: 'COMPLETED', onChainDrawId: { gt: 0 } },
                 orderBy: { executedAt: 'desc' },
                 include: { tickets: true },
             });
@@ -151,6 +153,7 @@ let DrawService = DrawService_1 = class DrawService {
                     drawDate: new Date().toISOString(),
                     winningNumbers: [],
                     prizePool: '0',
+                    transactionHash: null,
                     tiers: [
                         { name: 'Jackpot', match: '6 số', winners: 0, prizeValue: '75% Hũ' },
                         { name: 'Giải Nhất', match: '5 số', winners: 0, prizeValue: '5000' },
@@ -181,6 +184,7 @@ let DrawService = DrawService_1 = class DrawService {
                 drawDate: latestDraw.executedAt.toISOString(),
                 winningNumbers: winningNumbers.sort((a, b) => a - b),
                 prizePool: latestDraw.totalPrize,
+                transactionHash: latestDraw.transactionHash,
                 tiers: [
                     {
                         name: 'Jackpot',

@@ -42,7 +42,7 @@ let Web3Service = Web3Service_1 = class Web3Service {
         }
         const abi = [
             'event TicketPurchased(address indexed buyer, uint256 ticketId, uint8[6] numbers)',
-            'event DrawExecuted(uint256 indexed drawId, uint8[6] winningNumbers, uint256 totalPrize)',
+            'event DrawExecuted(uint256 indexed drawId, uint8[6] winningNumbers)',
             'function currentDrawId() view returns (uint256)',
             'function drawFinalized(uint256) view returns (bool)',
             'function winningNumbers(uint256, uint256) view returns (uint8)',
@@ -76,17 +76,26 @@ let Web3Service = Web3Service_1 = class Web3Service {
                     }
                 })();
             });
-            void this.contract.on('DrawExecuted', (drawId, winningNumbers, totalPrize) => {
+            void this.contract.on('DrawExecuted', (drawId, winningNumbers, event) => {
                 void (async () => {
                     try {
-                        this.logger.log(`DrawExecuted event received: drawId=${drawId}, prize=${totalPrize}`);
-                        await this.prisma.draw.create({
-                            data: {
-                                onChainDrawId: Number(drawId),
+                        const txHash = event?.log?.transactionHash || event?.transactionHash;
+                        this.logger.log(`DrawExecuted event received: drawId=${drawId}, txHash=${txHash}`);
+                        await this.prisma.draw.upsert({
+                            where: { onChainDrawId: Number(drawId) },
+                            update: {
                                 winningNumbers: Array.from(winningNumbers).map(Number),
-                                totalPrize: totalPrize.toString(),
                                 status: 'COMPLETED',
                                 executedAt: new Date(),
+                                transactionHash: txHash,
+                            },
+                            create: {
+                                onChainDrawId: Number(drawId),
+                                winningNumbers: Array.from(winningNumbers).map(Number),
+                                totalPrize: '0',
+                                status: 'COMPLETED',
+                                executedAt: new Date(),
+                                transactionHash: txHash,
                             },
                         });
                         this.logger.log(`Draw ${drawId} saved to database successfully.`);
@@ -154,6 +163,7 @@ let Web3Service = Web3Service_1 = class Web3Service {
                             totalPrize: '0',
                             status: 'COMPLETED',
                             executedAt: new Date(),
+                            transactionHash: null,
                         },
                     });
                     processed++;
@@ -221,6 +231,7 @@ let Web3Service = Web3Service_1 = class Web3Service {
                         totalPrize: '0',
                         status: 'PENDING',
                         executedAt: new Date(),
+                        transactionHash: null,
                     },
                 });
             }
@@ -242,6 +253,7 @@ let Web3Service = Web3Service_1 = class Web3Service {
                         totalPrize: '0',
                         status: 'PENDING',
                         executedAt: new Date(),
+                        transactionHash: null,
                     },
                 });
             }

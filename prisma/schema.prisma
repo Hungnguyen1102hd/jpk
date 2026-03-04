@@ -30,6 +30,7 @@ model Draw {
   totalPrize     String
   status         DrawStatus
   executedAt     DateTime
+  transactionHash String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   tickets        Ticket[]

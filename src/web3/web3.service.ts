@@ -39,7 +39,7 @@ export class Web3Service implements OnModuleInit {
 
     const abi = [
       'event TicketPurchased(address indexed buyer, uint256 ticketId, uint8[6] numbers)',
-      'event DrawExecuted(uint256 indexed drawId, uint8[6] winningNumbers, uint256 totalPrize)',
+      'event DrawExecuted(uint256 indexed drawId, uint8[6] winningNumbers)',
       'function currentDrawId() view returns (uint256)',
       'function drawFinalized(uint256) view returns (bool)',
       'function winningNumbers(uint256, uint256) view returns (uint8)',
@@ -90,21 +90,30 @@ export class Web3Service implements OnModuleInit {
       // Handle DrawExecuted Event
       void this.contract.on(
         'DrawExecuted',
-        (drawId: bigint, winningNumbers: number[], totalPrize: bigint) => {
+        (drawId: bigint, winningNumbers: number[], event: any) => {
           void (async () => {
             try {
+              const txHash = event?.log?.transactionHash || event?.transactionHash;
               this.logger.log(
-                `DrawExecuted event received: drawId=${drawId}, prize=${totalPrize}`,
+                `DrawExecuted event received: drawId=${drawId}, txHash=${txHash}`,
               );
 
-              // Create new Draw record as per requirement
-              await this.prisma.draw.create({
-                data: {
-                  onChainDrawId: Number(drawId),
+              // Update or Create Draw record
+              await this.prisma.draw.upsert({
+                where: { onChainDrawId: Number(drawId) },
+                update: {
                   winningNumbers: Array.from(winningNumbers).map(Number),
-                  totalPrize: totalPrize.toString(),
                   status: 'COMPLETED',
                   executedAt: new Date(),
+                  transactionHash: txHash,
+                },
+                create: {
+                  onChainDrawId: Number(drawId),
+                  winningNumbers: Array.from(winningNumbers).map(Number),
+                  totalPrize: '0',
+                  status: 'COMPLETED',
+                  executedAt: new Date(),
+                  transactionHash: txHash,
                 },
               });
 
@@ -220,6 +229,7 @@ export class Web3Service implements OnModuleInit {
               totalPrize: '0',
               status: 'COMPLETED',
               executedAt: new Date(),
+              transactionHash: null,
             },
           });
 
@@ -346,6 +356,7 @@ export class Web3Service implements OnModuleInit {
             totalPrize: '0',
             status: 'PENDING',
             executedAt: new Date(),
+            transactionHash: null,
           },
         });
       } catch (err) {
@@ -369,6 +380,7 @@ export class Web3Service implements OnModuleInit {
             totalPrize: '0',
             status: 'PENDING',
             executedAt: new Date(),
+            transactionHash: null,
           },
         });
       }
