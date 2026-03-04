@@ -350,14 +350,22 @@ export class Web3Service implements OnModuleInit {
           },
         });
       } catch (err) {
+        const lastCompletedDraw = await this.prisma.draw.findFirst({
+          where: { status: 'COMPLETED' },
+          orderBy: { onChainDrawId: 'desc' },
+        });
+        const fallbackDrawId = lastCompletedDraw
+          ? lastCompletedDraw.onChainDrawId + 1
+          : 1;
+
         this.logger.warn(
-          `Failed to fetch currentDrawId: ${(err as Error).message}. Using fallback draw.`,
+          `Failed to fetch currentDrawId: ${(err as Error).message}. Using fallback draw ID ${fallbackDrawId}.`,
         );
         latestDraw = await this.prisma.draw.upsert({
-          where: { onChainDrawId: -1 },
+          where: { onChainDrawId: fallbackDrawId },
           update: {},
           create: {
-            onChainDrawId: -1,
+            onChainDrawId: fallbackDrawId,
             winningNumbers: [],
             totalPrize: '0',
             status: 'PENDING',
@@ -365,24 +373,24 @@ export class Web3Service implements OnModuleInit {
           },
         });
       }
+
+      // Upsert Ticket record on onChainTicketId to avoid duplicates
+      await this.prisma.ticket.upsert({
+        where: { onChainTicketId: Number(ticketId) },
+        update: {
+          numbers: Array.from(numbers).map(Number),
+          drawId: latestDraw.id,
+          userId: user.id,
+        },
+        create: {
+          onChainTicketId: Number(ticketId),
+          numbers: Array.from(numbers).map(Number),
+          drawId: latestDraw.id,
+          userId: user.id,
+        },
+      });
+
+      this.logger.log(`Ticket ${ticketId} saved to database successfully.`);
     }
-
-    // Upsert Ticket record on onChainTicketId to avoid duplicates
-    await this.prisma.ticket.upsert({
-      where: { onChainTicketId: Number(ticketId) },
-      update: {
-        numbers: Array.from(numbers).map(Number),
-        drawId: latestDraw.id,
-        userId: user.id,
-      },
-      create: {
-        onChainTicketId: Number(ticketId),
-        numbers: Array.from(numbers).map(Number),
-        drawId: latestDraw.id,
-        userId: user.id,
-      },
-    });
-
-    this.logger.log(`Ticket ${ticketId} saved to database successfully.`);
   }
 }

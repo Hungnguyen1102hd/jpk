@@ -225,12 +225,19 @@ let Web3Service = Web3Service_1 = class Web3Service {
                 });
             }
             catch (err) {
-                this.logger.warn(`Failed to fetch currentDrawId: ${err.message}. Using fallback draw.`);
+                const lastCompletedDraw = await this.prisma.draw.findFirst({
+                    where: { status: 'COMPLETED' },
+                    orderBy: { onChainDrawId: 'desc' },
+                });
+                const fallbackDrawId = lastCompletedDraw
+                    ? lastCompletedDraw.onChainDrawId + 1
+                    : 1;
+                this.logger.warn(`Failed to fetch currentDrawId: ${err.message}. Using fallback draw ID ${fallbackDrawId}.`);
                 latestDraw = await this.prisma.draw.upsert({
-                    where: { onChainDrawId: -1 },
+                    where: { onChainDrawId: fallbackDrawId },
                     update: {},
                     create: {
-                        onChainDrawId: -1,
+                        onChainDrawId: fallbackDrawId,
                         winningNumbers: [],
                         totalPrize: '0',
                         status: 'PENDING',
@@ -238,22 +245,22 @@ let Web3Service = Web3Service_1 = class Web3Service {
                     },
                 });
             }
+            await this.prisma.ticket.upsert({
+                where: { onChainTicketId: Number(ticketId) },
+                update: {
+                    numbers: Array.from(numbers).map(Number),
+                    drawId: latestDraw.id,
+                    userId: user.id,
+                },
+                create: {
+                    onChainTicketId: Number(ticketId),
+                    numbers: Array.from(numbers).map(Number),
+                    drawId: latestDraw.id,
+                    userId: user.id,
+                },
+            });
+            this.logger.log(`Ticket ${ticketId} saved to database successfully.`);
         }
-        await this.prisma.ticket.upsert({
-            where: { onChainTicketId: Number(ticketId) },
-            update: {
-                numbers: Array.from(numbers).map(Number),
-                drawId: latestDraw.id,
-                userId: user.id,
-            },
-            create: {
-                onChainTicketId: Number(ticketId),
-                numbers: Array.from(numbers).map(Number),
-                drawId: latestDraw.id,
-                userId: user.id,
-            },
-        });
-        this.logger.log(`Ticket ${ticketId} saved to database successfully.`);
     }
 };
 exports.Web3Service = Web3Service;

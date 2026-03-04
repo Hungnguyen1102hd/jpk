@@ -11,7 +11,7 @@ export class DrawScheduler implements OnModuleInit {
   constructor(
     private readonly configService: ConfigService,
     private readonly web3Service: Web3Service,
-  ) { }
+  ) {}
 
   onModuleInit() {
     const enabled =
@@ -123,7 +123,9 @@ export class DrawScheduler implements OnModuleInit {
         `executeDraw transaction confirmed in block ${receipt.blockNumber}.`,
       );
 
-      this.logger.log('Triggering explicit state backfill to capture draw results...');
+      this.logger.log(
+        'Triggering explicit state backfill to capture draw results...',
+      );
       await this.web3Service.backfillAllDraws();
     } catch (error) {
       this.logger.error(

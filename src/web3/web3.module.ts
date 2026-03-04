@@ -7,4 +7,4 @@ import { Web3Controller } from './web3.controller';
   controllers: [Web3Controller],
   exports: [Web3Service],
 })
-export class Web3Module { }
+export class Web3Module {}

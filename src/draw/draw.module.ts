@@ -9,4 +9,4 @@ import { Web3Module } from '../web3/web3.module';
   providers: [DrawService, DrawScheduler],
   controllers: [DrawController],
 })
-export class DrawModule { }
+export class DrawModule {}
